@@ -2,48 +2,50 @@
 
 This project uses [Zustand](https://github.com/pmndrs/zustand) for state management. Zustand is a small, fast, and scalable state management solution.
 
-## Basic Usage
+## Current Stores
 
-### Creating a Store
+### Auth Store (useAuthStore)
+
+The auth store manages user authentication state with localStorage persistence:
 
 ```typescript
-// src/store/useCounterStore.ts
-import { create } from 'zustand';
+// src/store/useAuthStore.ts
+import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
 
-interface CounterState {
-  count: number;
-  increment: () => void;
-  decrement: () => void;
-  reset: () => void;
-}
-
-export const useCounterStore = create<CounterState>((set) => ({
-  count: 0,
-  increment: () => set((state) => ({ count: state.count + 1 })),
-  decrement: () => set((state) => ({ count: state.count - 1 })),
-  reset: () => set({ count: 0 }),
-}));
+export const useAuthStore = create<AuthState>()(
+  persist(
+    (set) => ({
+      user: null,
+      token: null,
+      isAuthenticated: false,
+      setAuth: (data) => { /* ... */ },
+      logout: () => { /* ... */ },
+    }),
+    {
+      name: 'auth-storage', // localStorage key
+    }
+  )
+)
 ```
 
 ### Using the Store in Components
 
 ```typescript
-// src/components/SomeComponent.tsx
-import { useCounterStore } from '../store/useCounterStore';
+// In any component
+import { useAuthStore } from '@/store/useAuthStore'
 
-export const SomeComponent = () => {
+export const Dashboard = () => {
   // Get state and actions from the store
-  const { count, increment, decrement, reset } = useCounterStore();
+  const { user, isAuthenticated, logout } = useAuthStore()
 
   return (
     <div>
-      <p>Count: {count}</p>
-      <button onClick={increment}>Increment</button>
-      <button onClick={decrement}>Decrement</button>
-      <button onClick={reset}>Reset</button>
+      <p>Welcome, {user?.name}</p>
+      <button onClick={logout}>Logout</button>
     </div>
-  );
-};
+  )
+}
 ```
 
 ## Advanced Usage
