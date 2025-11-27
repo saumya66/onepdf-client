@@ -1,15 +1,18 @@
 import { useState, useEffect } from 'react'
-import { Plus } from 'lucide-react'
+import { Plus, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import { useConversations } from '@/hooks/queries/useChatQueries'
+import { useConversations, useCreateConversation } from '@/hooks/queries/useChatQueries'
 import { ChatBox } from './ChatBox'
 
 export function ChatSideBar() {
   const [activeConversationId, setActiveConversationId] = useState<string>('')
   
   // Fetch conversations on component mount
-  const { data: conversations } = useConversations()
+  const { data: conversations, refetch: refetchConversations } = useConversations()
+  
+  // Create conversation mutation
+  const createConversationMutation = useCreateConversation()
   
   useEffect(() => {
     if (conversations && conversations.length > 0 && !activeConversationId) {
@@ -18,6 +21,21 @@ export function ChatSideBar() {
       console.log('Conversations loaded:', conversations)
     }
   }, [conversations, activeConversationId])
+  
+  const handleNewConversation = async () => {
+    try {
+      // Create new conversation via API
+      const newConversation = await createConversationMutation.mutateAsync({})
+      
+      // Refetch conversations to update the list
+      await refetchConversations()
+      
+      // Switch to the new conversation
+      setActiveConversationId(newConversation.id)
+    } catch (error) {
+      console.error('Error creating new conversation:', error)
+    }
+  }
   
   if (!conversations || conversations.length === 0) {
     return (
@@ -40,8 +58,14 @@ export function ChatSideBar() {
             variant="ghost"
             size="sm"
             className="h-8 w-8 p-0 ml-2"
+            onClick={handleNewConversation}
+            disabled={createConversationMutation.isPending}
           >
-            <Plus className="h-4 w-4" />
+            {createConversationMutation.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Plus className="h-4 w-4" />
+            )}
           </Button>
         </TabsList>
       </div>

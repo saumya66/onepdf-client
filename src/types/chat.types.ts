@@ -28,3 +28,29 @@ export interface MessagesResponse {
   limit: number
 }
 
+export interface SendMessageRequest {
+  user_message: string
+  pdfs?: string[]
+  images?: string[]
+  conversation_id?: string
+}
+
+export interface SendMessageResponse {
+  conversation_id: string
+  reply_message: Message
+}
+
+export interface CreateConversationRequest {
+  title?: string
+  mode?: string
+}
+
+export interface CreateConversationResponse {
+  id: string
+  user_id: string
+  title: string
+  mode: string | null
+  created_at: string
+  updated_at: string
+}
+

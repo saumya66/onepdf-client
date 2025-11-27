@@ -15,7 +15,7 @@ function RootComponent() {
       <Outlet />
       <Toaster />
       {/* DevTools - only show in development */}
-      <TanStackRouterDevtools position="bottom-right" />
+      <TanStackRouterDevtools position="bottom-left" />
       <ReactQueryDevtools initialIsOpen={false} buttonPosition="top-left"/>
     </QueryClientProvider>
   )

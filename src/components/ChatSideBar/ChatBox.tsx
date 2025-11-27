@@ -3,9 +3,11 @@ import { Bot, Send, User } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { useMessages } from '@/hooks/queries/useChatQueries'
+import { useMessages, useSendMessage } from '@/hooks/queries/useChatQueries'
 import { useChatStore } from '@/store/useChatStore'
 import type { Message, AssistantMessageContent } from '@/types/chat.types'
+import { AnimateIcon } from '@/components/animate-ui/icons/icon'
+import { Sparkle } from '@/components/animate-ui/icons/sparkle'
 
 interface ChatBoxProps {
   conversationId: string
@@ -25,6 +27,9 @@ export function ChatBox({ conversationId }: ChatBoxProps) {
   // Fetch messages from API
   const { data: fetchedMessages } = useMessages(conversationId)
   
+  // Send message mutation
+  const sendMessageMutation = useSendMessage()
+  
   // Update store when messages are fetched
   useEffect(() => {
     if (fetchedMessages && fetchedMessages.length > 0) {
@@ -37,40 +42,41 @@ export function ChatBox({ conversationId }: ChatBoxProps) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [conversationMessages])
 
-  const handleSend = () => {
-    if (!input.trim()) return
+  const handleSend = async () => {
+    if (!input.trim() || sendMessageMutation.isPending || !conversationId) return
 
-    const newMessage: Message = {
+    const userMessageContent = input
+    
+    const userMessage: Message = {
       id: Date.now().toString(),
       conversation_id: conversationId,
       sender: 'user',
-      message: input,
+      message: userMessageContent,
       created_at: new Date().toISOString(),
     }
 
-    addMessage(conversationId, newMessage)
+    // Add user message to store immediately (optimistic update)
+    addMessage(conversationId, userMessage)
     setInput('')
 
-    // TODO: Send message to API
-    // Simulate bot response for now
-    setTimeout(() => {
-      const botMessage: Message = {
-        id: (Date.now() + 1).toString(),
+    // Send message to API
+    try {
+      const response = await sendMessageMutation.mutateAsync({
+        user_message: userMessageContent,
         conversation_id: conversationId,
-        sender: 'assistant',
-        message: {
-          workflow: null,
-          reply_text_message: "I'm processing your request...",
-          should_trigger_workflow: false,
-        },
-        created_at: new Date().toISOString(),
-      }
-      addMessage(conversationId, botMessage)
-    }, 1000)
+        // TODO: Add pdfs and images arrays when file upload is implemented
+      })
+
+      // Add assistant's reply to store
+      addMessage(conversationId, response.reply_message)
+    } catch (error) {
+      console.error('Error sending message:', error)
+      // Optionally show error to user
+    }
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
+    if (e.key === 'Enter' && !sendMessageMutation.isPending) {
       handleSend()
     }
   }
@@ -141,6 +147,26 @@ export function ChatBox({ conversationId }: ChatBoxProps) {
             </div>
           )
         })}
+        
+        {/* AI is responding - show sparkle animation */}
+        {sendMessageMutation.isPending && (
+          <div className="flex gap-3 flex-row">
+            <Avatar className="h-8 w-8 flex-shrink-0">
+              <AvatarFallback className="bg-gray-100 dark:bg-gray-800">
+                <Bot className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+              </AvatarFallback>
+            </Avatar>
+
+            <div className="flex flex-col gap-1 max-w-[80%] items-start">
+              <div className="rounded-lg px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100">
+                <AnimateIcon animate={true} loop={true}>
+                  <Sparkle className="h-5 w-5" />
+                </AnimateIcon>
+              </div>
+            </div>
+          </div>
+        )}
+        
         <div ref={messagesEndRef} />
       </div>
 
@@ -158,6 +184,7 @@ export function ChatBox({ conversationId }: ChatBoxProps) {
             onClick={handleSend}
             size="icon"
             className="bg-emerald-600 hover:bg-emerald-700"
+            disabled={sendMessageMutation.isPending}
           >
             <Send className="h-4 w-4" />
           </Button>
