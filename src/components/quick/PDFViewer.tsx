@@ -20,7 +20,7 @@ export function PDFViewer() {
   const [fileUrl, setFileUrl] = useState<string | null>(null)
   const [numPages, setNumPages] = useState<number>(0)
   const [pageNumber, setPageNumber] = useState<number>(1)
-  const [scale, setScale] = useState<number>(0.75)
+  const [scale, setScale] = useState<number>(0.75) 
   const [loadingFile, setLoadingFile] = useState<boolean>(false)
   
   // Load file when selected
