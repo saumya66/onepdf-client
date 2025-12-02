@@ -1,5 +1,5 @@
 import apiClient from './client'
-import type { Conversation, Message, MessagesResponse, SendMessageRequest, SendMessageResponse, CreateConversationRequest, CreateConversationResponse } from '@/types/chat.types'
+import type { Conversation, Message, MessagesResponse, SendMessageRequest, SendMessageResponse, CreateConversationRequest, CreateConversationResponse, ConversationFile } from '@/types/chat.types'
 
 export const chatApi = {
   // Get all conversations for the current user
@@ -50,6 +50,20 @@ export const chatApi = {
   // Create a new conversation
   createConversation: async (data: CreateConversationRequest = {}): Promise<CreateConversationResponse> => {
     const response = await apiClient.post<CreateConversationResponse>('/chat/new-conversation', data)
+    return response.data
+  },
+
+  // Get all files for a specific conversation
+  getConversationFiles: async (conversationId: string): Promise<ConversationFile[]> => {
+    const response = await apiClient.get<ConversationFile[]>(`/chat/conversations/${conversationId}/files`)
+    return response.data
+  },
+
+  // Download a file by ID (returns blob)
+  downloadFile: async (fileId: string): Promise<Blob> => {
+    const response = await apiClient.get(`/chat/files/${fileId}/download`, {
+      responseType: 'blob',
+    })
     return response.data
   },
 }

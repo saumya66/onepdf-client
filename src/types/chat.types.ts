@@ -30,8 +30,8 @@ export interface MessagesResponse {
 
 export interface SendMessageRequest {
   user_message: string
-  pdfs?: string[]
-  images?: string[]
+  pdfs?: File[]
+  images?: File[]
   conversation_id?: string
 }
 
@@ -52,5 +52,14 @@ export interface CreateConversationResponse {
   mode: string | null
   created_at: string
   updated_at: string
+}
+
+export interface ConversationFile {
+  id: string
+  filename: string
+  mime_type: string
+  file_size: number
+  page_count: number | null
+  created_at: string
 }
 

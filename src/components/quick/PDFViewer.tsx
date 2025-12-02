@@ -1,66 +1,269 @@
-import { FileText, Plus } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { FileText, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Image as ImageIcon } from 'lucide-react'
+import { Document, Page, pdfjs } from 'react-pdf'
+import { useConversationFiles } from '@/hooks/queries/useChatQueries'
+import { useAppStore } from '@/store/useAppStore'
+import { chatApi } from '@/api/chat.api'
+import { Button } from '@/components/ui/button'
+import type { ConversationFile } from '@/types/chat.types'
+import 'react-pdf/dist/Page/AnnotationLayer.css'
+import 'react-pdf/dist/Page/TextLayer.css'
 
-// Mock data for demonstration
-const mockFiles = [
-  {
-    id: '1',
-    name: 'Document_2024.pdf',
-    type: 'pdf',
-    pages: 12,
-    size: '2.4 MB',
-    thumbnail: null,
-  },
-  {
-    id: '2',
-    name: 'Report_Final.pdf',
-    type: 'pdf',
-    pages: 8,
-    size: '1.8 MB',
-    thumbnail: null,
-  },
-]
+// Set up PDF.js worker - use unpkg CDN with matching version
+pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`
 
 export function PDFViewer() {
+  const activeConversationId = useAppStore(state => state.activeConversationId)
+  const { data: files, isLoading } = useConversationFiles(activeConversationId || '')
+  
+  const [selectedFile, setSelectedFile] = useState<ConversationFile | null>(null)
+  const [fileUrl, setFileUrl] = useState<string | null>(null)
+  const [numPages, setNumPages] = useState<number>(0)
+  const [pageNumber, setPageNumber] = useState<number>(1)
+  const [scale, setScale] = useState<number>(0.75)
+  const [loadingFile, setLoadingFile] = useState<boolean>(false)
+  
+  // Load file when selected
+  useEffect(() => {
+    if (!selectedFile) {
+      setFileUrl(prev => {
+        if (prev) {
+          URL.revokeObjectURL(prev)
+        }
+        return null
+      })
+      setPageNumber(1)
+      setNumPages(0)
+      return
+    }
+
+    const loadFile = async () => {
+      setLoadingFile(true)
+      try {
+        const blob = await chatApi.downloadFile(selectedFile.id)
+        console.log("BLOB", blob)
+        const url = URL.createObjectURL(blob)
+        console.log("URRRL", url)
+        setFileUrl(prev => {
+          // Revoke previous URL if it exists
+          if (prev) {
+            URL.revokeObjectURL(prev)
+          }
+          return url
+        })
+      } catch (error) {
+        console.error('Error loading file:', error)
+      } finally {
+        setLoadingFile(false)
+      }
+    }
+
+    loadFile()
+
+    // Cleanup: revoke object URL when component unmounts or file changes
+    return () => {
+      setFileUrl(prev => {
+        if (prev) {
+          URL.revokeObjectURL(prev)
+        }
+        return null
+      })
+    }
+  }, [selectedFile])
+
+  const isImage = (mimeType: string) => mimeType.startsWith('image/')
+  const isPDF = (mimeType: string) => mimeType === 'application/pdf'
+
+  const handleFileClick = (file: ConversationFile) => {
+    setSelectedFile(file)
+    setPageNumber(1)
+    setScale(0.75)
+  }
+
+  const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
+    console.log('PDF loaded successfully, pages:', numPages)
+    setNumPages(numPages)
+  }
+
+  const onDocumentLoadError = (error: Error) => {
+    console.error('PDF load error:', error)
+  }
+
+  const goToPrevPage = () => {
+    setPageNumber(prev => Math.max(1, prev - 1))
+  }
+
+  const goToNextPage = () => {
+    setPageNumber(prev => Math.min(numPages, prev + 1))
+  }
+
+  const handleZoomIn = () => {
+    setScale(prev => Math.min(2.0, prev + 0.25))
+  }
+
+  const handleZoomOut = () => {
+    setScale(prev => Math.max(0.5, prev - 0.25))
+  }
+  
   return (
     <div className="flex flex-col h-full">
-      {/* PDF Preview Area - Takes most of the space */}
-      <div className="flex-1 flex items-center justify-center bg-gray-50 dark:bg-gray-900 p-8">
-        <div className="flex flex-col items-center justify-center text-gray-400">
-          <FileText className="h-24 w-24 mb-4" strokeWidth={1} />
-          <p className="text-lg font-medium">PDF Preview</p>
-          <p className="text-sm">Page 1 of 12</p>
-        </div>
+      {/* Preview Area - Takes most of the space */}
+      <div className="flex-1 flex items-center justify-center bg-gray-50 dark:bg-gray-900 p-8 pt-4 overflow-auto">
+        {loadingFile ? (
+          <div className="flex flex-col items-center justify-center text-gray-400">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-400 mb-4"></div>
+            <p className="text-sm">Loading file...</p>
+          </div>
+        ) : !selectedFile || !fileUrl ? (
+          <div className="flex flex-col items-center justify-center text-gray-400">
+            <FileText className="h-24 w-24 mb-4" strokeWidth={1} />
+            <p className="text-lg font-medium">File Preview</p>
+            <p className="text-sm">Select a file to preview</p>
+          </div>
+        ) : isImage(selectedFile.mime_type) ? (
+          <div className="flex flex-col items-center w-full h-full">
+            <img
+              src={fileUrl}
+              alt={selectedFile.filename}
+              className="max-w-full max-h-full object-contain rounded-lg shadow-lg"
+            />
+          </div>
+        ) : isPDF(selectedFile.mime_type) ? (
+          <div className="flex flex-col items-center w-full h-full">
+            {/* PDF Controls */}
+            <div className="flex items-center gap-2 mb-3 bg-white dark:bg-gray-800 rounded-md px-2 py-1 shadow-sm">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6"
+                onClick={goToPrevPage}
+                disabled={pageNumber <= 1}
+              >
+                <ChevronLeft className="h-3 w-3" />
+              </Button>
+              
+              <span className="text-xs font-medium">
+                {pageNumber} / {numPages}
+              </span>
+              
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6"
+                onClick={goToNextPage}
+                disabled={pageNumber >= numPages}
+              >
+                <ChevronRight className="h-3 w-3" />
+              </Button>
+              
+              <div className="w-px h-4 bg-gray-300 dark:bg-gray-600"></div>
+              
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6"
+                onClick={handleZoomOut}
+                disabled={scale <= 0.5}
+              >
+                <ZoomOut className="h-3 w-3" />
+              </Button>
+              
+              <span className="text-xs font-medium min-w-[40px] text-center">
+                {Math.round(scale * 100)}%
+              </span>
+              
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6"
+                onClick={handleZoomIn}
+                disabled={scale >= 2.0}
+              >
+                <ZoomIn className="h-3 w-3" />
+              </Button>
+            </div>
+
+            {/* PDF Document */}
+            <div className="flex-1 overflow-auto bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4">
+              <Document
+                file={fileUrl}
+                onLoadSuccess={onDocumentLoadSuccess}
+                onLoadError={onDocumentLoadError}
+                loading={
+                  <div className="flex items-center justify-center p-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-400"></div>
+                  </div>
+                }
+                error={
+                  <div className="flex flex-col items-center justify-center p-8 text-red-500">
+                    <p>Failed to load PDF</p>
+                  </div>
+                }
+              >
+                <Page
+                  pageNumber={pageNumber}
+                  scale={scale}
+                  renderTextLayer={true}
+                  renderAnnotationLayer={true}
+                  className="shadow-md"
+                />
+              </Document>
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center text-gray-400">
+            <FileText className="h-24 w-24 mb-4" strokeWidth={1} />
+            <p className="text-lg font-medium">Preview not available</p>
+            <p className="text-sm">File type: {selectedFile.mime_type}</p>
+          </div>
+        )}
       </div>
 
       {/* File Carousel - Horizontal Scrollable */}
       <div className="border-t bg-white dark:bg-gray-950 p-4">
-        <div className="w-full overflow-x-auto">
-          <div className="flex gap-3 pb-2">
-            {mockFiles.map((file) => (
-              <button
-                key={file.id}
-                className="flex-shrink-0 w-32 h-40 rounded-lg border-2 border-emerald-500 bg-emerald-50 dark:bg-emerald-950/20 p-3 flex flex-col items-center justify-center hover:bg-emerald-100 dark:hover:bg-emerald-950/30 transition-colors"
-              >
-                <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-emerald-100 dark:bg-emerald-900/50 mb-2">
-                  <FileText className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
-                </div>
-                <p className="text-xs font-medium text-center line-clamp-2">
-                  {file.name}
-                </p>
-              </button>
-            ))}
-
-            {/* Add File Button */}
-            <button className="flex-shrink-0 w-32 h-40 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex flex-col items-center justify-center hover:border-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 transition-colors group">
-              <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-gray-200 dark:bg-gray-800 group-hover:bg-emerald-100 dark:group-hover:bg-emerald-900/50 mb-2 transition-colors">
-                <Plus className="h-6 w-6 text-gray-500 dark:text-gray-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" />
-              </div>
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">
-                Add File
-              </p>
-            </button>
+        {isLoading ? (
+          <div className="flex items-center justify-center py-8 text-gray-500">
+            <p className="text-sm">Loading files...</p>
           </div>
-        </div>
+        ) : !files || files.length === 0 ? (
+          <div className="flex items-center justify-center py-8 text-gray-500">
+            <p className="text-sm">No files uploaded</p>
+          </div>
+        ) : (
+          <div className="w-full overflow-x-auto">
+            <div className="flex gap-3 pb-2">
+              {files.map((file) => {
+                const isSelected = selectedFile?.id === file.id
+                const isImageFile = isImage(file.mime_type)
+                
+                return (
+                  <button
+                    key={file.id}
+                    onClick={() => handleFileClick(file)}
+                    className={`flex-shrink-0 w-24 h-24 rounded-lg border-2 p-3 flex flex-col items-center justify-center transition-colors ${
+                      isSelected
+                        ? 'border-emerald-600 bg-emerald-100 dark:bg-emerald-950/40'
+                        : 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/20 hover:bg-emerald-100 dark:hover:bg-emerald-950/30'
+                    }`}
+                  >
+                    {isImageFile ? (
+                      <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-emerald-100 dark:bg-emerald-900/50 mb-2">
+                        <ImageIcon className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-emerald-100 dark:bg-emerald-900/50 mb-2">
+                        <FileText className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+                      </div>
+                    )}
+                    <p className="text-xs truncate w-full text-center">
+                      {file.filename}
+                    </p>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

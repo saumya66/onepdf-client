@@ -1,12 +1,15 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Plus, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { useConversations, useCreateConversation } from '@/hooks/queries/useChatQueries'
 import { ChatBox } from './ChatBox'
+import { useAppStore } from '@/store/useAppStore'
 
 export function ChatSideBar() {
   const [activeConversationId, setActiveConversationId] = useState<string>('')
+  const tabsScrollRef = useRef<HTMLDivElement>(null)
+  const setGlobalActiveConversationId = useAppStore(state => state.setActiveConversationId)
   
   // Fetch conversations on component mount
   const { data: conversations, refetch: refetchConversations } = useConversations()
@@ -18,9 +21,17 @@ export function ChatSideBar() {
     if (conversations && conversations.length > 0 && !activeConversationId) {
       // Set first conversation as active by default
       setActiveConversationId(conversations[0].id)
+      setGlobalActiveConversationId(conversations[0].id)
       console.log('Conversations loaded:', conversations)
     }
-  }, [conversations, activeConversationId])
+  }, [conversations, activeConversationId, setGlobalActiveConversationId])
+  
+  // Sync active conversation ID to global store
+  useEffect(() => {
+    if (activeConversationId) {
+      setGlobalActiveConversationId(activeConversationId)
+    }
+  }, [activeConversationId, setGlobalActiveConversationId])
   
   const handleNewConversation = async () => {
     try {
@@ -32,6 +43,13 @@ export function ChatSideBar() {
       
       // Switch to the new conversation
       setActiveConversationId(newConversation.id)
+      
+      // Scroll tabs to the left (start)
+      setTimeout(() => {
+        if (tabsScrollRef.current) {
+          tabsScrollRef.current.scrollTo({ left: 0, behavior: 'smooth' })
+        }
+      }, 100)
     } catch (error) {
       console.error('Error creating new conversation:', error)
     }
@@ -47,7 +65,7 @@ export function ChatSideBar() {
 
   return (
     <Tabs value={activeConversationId} onValueChange={setActiveConversationId} className="flex flex-col h-full">
-      <div className="overflow-x-auto scrollbar-hide">
+      <div ref={tabsScrollRef} className="overflow-x-auto scrollbar-hide">
         <TabsList className='p-0 pt-4 h-full'>
           {conversations.map((conversation) => (
             <TabsTrigger className='rounded-t-lg py-2' key={conversation.id} value={conversation.id}>

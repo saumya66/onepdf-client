@@ -7,6 +7,7 @@ export const chatKeys = {
   all: ['chat'] as const,
   conversations: () => [...chatKeys.all, 'conversations'] as const,
   messages: (conversationId: string) => [...chatKeys.all, 'messages', conversationId] as const,
+  files: (conversationId: string) => [...chatKeys.all, 'files', conversationId] as const,
 }
 
 // Get all conversations
@@ -37,6 +38,15 @@ export const useSendMessage = () => {
 export const useCreateConversation = () => {
   return useMutation({
     mutationFn: (data?: CreateConversationRequest) => chatApi.createConversation(data),
+  })
+}
+
+// Get files for a specific conversation
+export const useConversationFiles = (conversationId: string) => {
+  return useQuery({
+    queryKey: chatKeys.files(conversationId),
+    queryFn: () => chatApi.getConversationFiles(conversationId),
+    enabled: !!conversationId,
   })
 }
 
