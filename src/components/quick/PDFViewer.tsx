@@ -1,9 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { FileText, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Image as ImageIcon } from 'lucide-react'
 import { Document, Page, pdfjs } from 'react-pdf'
-import { useConversationFiles } from '@/hooks/queries/useChatQueries'
+import { useConversationFiles, useFileDownload } from '@/hooks/queries/useChatQueries'
 import { useAppStore } from '@/store/useAppStore'
-import { chatApi } from '@/api/chat.api'
 import { Button } from '@/components/ui/button'
 import type { ConversationFile } from '@/types/chat.types'
 import 'react-pdf/dist/Page/AnnotationLayer.css'
@@ -17,59 +16,12 @@ export function PDFViewer() {
   const { data: files, isLoading } = useConversationFiles(activeConversationId || '')
   
   const [selectedFile, setSelectedFile] = useState<ConversationFile | null>(null)
-  const [fileUrl, setFileUrl] = useState<string | null>(null)
   const [numPages, setNumPages] = useState<number>(0)
   const [pageNumber, setPageNumber] = useState<number>(1)
-  const [scale, setScale] = useState<number>(0.75) 
-  const [loadingFile, setLoadingFile] = useState<boolean>(false)
+  const [scale, setScale] = useState<number>(0.75)
   
-  // Load file when selected
-  useEffect(() => {
-    if (!selectedFile) {
-      setFileUrl(prev => {
-        if (prev) {
-          URL.revokeObjectURL(prev)
-        }
-        return null
-      })
-      setPageNumber(1)
-      setNumPages(0)
-      return
-    }
-
-    const loadFile = async () => {
-      setLoadingFile(true)
-      try {
-        const blob = await chatApi.downloadFile(selectedFile.id)
-        console.log("BLOB", blob)
-        const url = URL.createObjectURL(blob)
-        console.log("URRRL", url)
-        setFileUrl(prev => {
-          // Revoke previous URL if it exists
-          if (prev) {
-            URL.revokeObjectURL(prev)
-          }
-          return url
-        })
-      } catch (error) {
-        console.error('Error loading file:', error)
-      } finally {
-        setLoadingFile(false)
-      }
-    }
-
-    loadFile()
-
-    // Cleanup: revoke object URL when component unmounts or file changes
-    return () => {
-      setFileUrl(prev => {
-        if (prev) {
-          URL.revokeObjectURL(prev)
-        }
-        return null
-      })
-    }
-  }, [selectedFile])
+  // Use cached file download query
+  const { data: fileData, isLoading: loadingFile } = useFileDownload(selectedFile?.id || null)
 
   const isImage = (mimeType: string) => mimeType.startsWith('image/')
   const isPDF = (mimeType: string) => mimeType === 'application/pdf'
@@ -114,16 +66,16 @@ export function PDFViewer() {
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-400 mb-4"></div>
             <p className="text-sm">Loading file...</p>
           </div>
-        ) : !selectedFile || !fileUrl ? (
+        ) : !selectedFile || !fileData ? (
           <div className="flex flex-col items-center justify-center text-gray-400">
             <FileText className="h-24 w-24 mb-4" strokeWidth={1} />
             <p className="text-lg font-medium">File Preview</p>
             <p className="text-sm">Select a file to preview</p>
           </div>
         ) : isImage(selectedFile.mime_type) ? (
-          <div className="flex flex-col items-center w-full h-full">
+          <div className="flex flex-col items-center justify-center w-full h-full">
             <img
-              src={fileUrl}
+              src={fileData.url}
               alt={selectedFile.filename}
               className="max-w-full max-h-full object-contain rounded-lg shadow-lg"
             />
@@ -186,7 +138,7 @@ export function PDFViewer() {
             {/* PDF Document */}
             <div className="flex-1 overflow-auto bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4">
               <Document
-                file={fileUrl}
+                file={fileData.url}
                 onLoadSuccess={onDocumentLoadSuccess}
                 onLoadError={onDocumentLoadError}
                 loading={
@@ -240,10 +192,10 @@ export function PDFViewer() {
                   <button
                     key={file.id}
                     onClick={() => handleFileClick(file)}
-                    className={`flex-shrink-0 w-24 h-24 rounded-lg border-2 p-3 flex flex-col items-center justify-center transition-colors ${
+                    className={`flex-shrink-0 w-24 h-24 cursor-pointer rounded-lg border-2 p-3 flex flex-col items-center justify-center transition-colors ${
                       isSelected
                         ? 'border-emerald-600 bg-emerald-100 dark:bg-emerald-950/40'
-                        : 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/20 hover:bg-emerald-100 dark:hover:bg-emerald-950/30'
+                        : 'border-0 hover:border-2 hover:border-emerald-500 bg-emerald-50 dark:bg-emerald-950/20 hover:bg-emerald-100 dark:hover:bg-emerald-950/30'
                     }`}
                   >
                     {isImageFile ? (

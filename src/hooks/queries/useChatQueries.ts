@@ -8,6 +8,7 @@ export const chatKeys = {
   conversations: () => [...chatKeys.all, 'conversations'] as const,
   messages: (conversationId: string) => [...chatKeys.all, 'messages', conversationId] as const,
   files: (conversationId: string) => [...chatKeys.all, 'files', conversationId] as const,
+  fileDownload: (fileId: string) => [...chatKeys.all, 'fileDownload', fileId] as const,
 }
 
 // Get all conversations
@@ -47,6 +48,22 @@ export const useConversationFiles = (conversationId: string) => {
     queryKey: chatKeys.files(conversationId),
     queryFn: () => chatApi.getConversationFiles(conversationId),
     enabled: !!conversationId,
+  })
+}
+
+// Download a file (cached)
+export const useFileDownload = (fileId: string | null) => {
+  return useQuery({
+    queryKey: chatKeys.fileDownload(fileId || ''),
+    queryFn: async () => {
+      const blob = await chatApi.downloadFile(fileId!)
+      // Create URL for images, return blob for PDF
+      const url = URL.createObjectURL(blob)
+      return { blob, url }
+    },
+    enabled: !!fileId, // Only fetch when fileId is provided
+    staleTime: Infinity, // Never consider data stale (keep cached)
+    gcTime: 1000 * 60 * 30, // Keep in cache for 30 minutes (formerly cacheTime)
   })
 }
 

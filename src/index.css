@@ -134,3 +134,42 @@
     scrollbar-width: none;  /* Firefox */
   }
 }
+
+/* React Mentions Styles */
+.mentions-input {
+  width: 100%;
+}
+
+.mentions-input textarea {
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.mentions-input textarea:focus {
+  outline: none;
+}
+
+.mentions-input textarea::placeholder {
+  color: #9ca3af !important;
+  opacity: 1;
+}
+
+/* Dark mode styles for mentions */
+.dark .mentions-input textarea {
+  background-color: transparent;
+  color: hsl(var(--foreground));
+}
+
+.dark .mentions-input__suggestions__list {
+  background-color: hsl(var(--popover)) !important;
+  border-color: hsl(var(--border)) !important;
+}
+
+.dark .mentions-input__suggestions__item {
+  border-color: hsl(var(--border)) !important;
+}
+
+.dark .mentions-input__suggestions__item--focused {
+  background-color: hsl(var(--accent)) !important;
+}

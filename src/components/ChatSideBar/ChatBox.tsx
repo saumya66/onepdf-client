@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { Bot, Send, User, Paperclip, X, FileText } from 'lucide-react'
+import { MentionsInput, Mention } from 'react-mentions'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { useMessages, useSendMessage, chatKeys } from '@/hooks/queries/useChatQueries'
+import { useMessages, useSendMessage, chatKeys, useConversationFiles } from '@/hooks/queries/useChatQueries'
 import { useChatStore } from '@/store/useChatStore'
 import type { Message, AssistantMessageContent } from '@/types/chat.types'
 import { AnimateIcon } from '@/components/animate-ui/icons/icon'
@@ -17,7 +18,7 @@ export function ChatBox({ conversationId }: ChatBoxProps) {
   const [input, setInput] = useState('')
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([])
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const mentionInputRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   
   const queryClient = useQueryClient()
@@ -31,6 +32,18 @@ export function ChatBox({ conversationId }: ChatBoxProps) {
   
   // Fetch messages from API
   const { data: fetchedMessages } = useMessages(conversationId)
+  
+  // Fetch files for mentions (uses React Query cache)
+  const { data: conversationFiles } = useConversationFiles(conversationId)
+  
+  // Transform files for react-mentions format
+  const fileMentionData = useMemo(() => {
+    if (!conversationFiles) return []
+    return conversationFiles.map(file => ({
+      id: file.id,
+      display: file.filename,
+    }))
+  }, [conversationFiles])
   
   // Send message mutation
   const sendMessageMutation = useSendMessage()
@@ -52,7 +65,6 @@ export function ChatBox({ conversationId }: ChatBoxProps) {
 
     const userMessageContent = input
     const filesToSend = uploadedFiles
-    
     const userMessage: Message = {
       id: Date.now().toString(),
       conversation_id: conversationId,
@@ -60,7 +72,6 @@ export function ChatBox({ conversationId }: ChatBoxProps) {
       message: userMessageContent,
       created_at: new Date().toISOString(),
     }
-
     // Add user message to store immediately (optimistic update)
     addMessage(conversationId, userMessage)
     setInput('')
@@ -93,28 +104,19 @@ export function ChatBox({ conversationId }: ChatBoxProps) {
     }
   }
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setInput(e.target.value)
-    
-    // Auto-resize textarea
-    const textarea = e.target
-    textarea.style.height = 'auto'
-    textarea.style.height = `${Math.min(textarea.scrollHeight, 150)}px`
+  const handleInputChange = (
+    _event: { target: { value: string } },
+    newValue: string,
+  ) => {
+    setInput(newValue)
   }
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement | HTMLInputElement>) => {
     if (e.key === 'Enter' && !e.shiftKey && !sendMessageMutation.isPending) {
       e.preventDefault()
       handleSend()
     }
   }
-  
-  // Reset textarea height after sending
-  useEffect(() => {
-    if (input === '' && textareaRef.current) {
-      textareaRef.current.style.height = 'auto'
-    }
-  }, [input])
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
@@ -130,6 +132,57 @@ export function ChatBox({ conversationId }: ChatBoxProps) {
 
   const removeFile = (index: number) => {
     setUploadedFiles(prev => prev.filter((_, i) => i !== index))
+  }
+
+  // Styles for react-mentions
+  const mentionInputStyle = {
+    control: {
+      fontSize: 13,
+      minHeight: 40,
+      maxHeight: 150,
+    },
+    '&multiLine': {
+      control: {
+        minHeight: 40,
+      },
+      highlighter: {
+        padding: '8px 12px',
+        border: '1px solid transparent',
+      },
+      input: {
+        padding: '8px 12px',
+        border: 'none',
+        outline: 'none',
+        overflow: 'auto',
+        maxHeight: 150,
+        fontSize: 13,
+        background: 'transparent',
+      },
+    },
+    suggestions: {
+      list: {
+        backgroundColor: 'white',
+        border: '1px solid #e5e7eb',
+        borderRadius: '8px',
+        boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)',
+        overflow: 'hidden',
+        maxHeight: 200,
+        overflowY: 'auto' as const,
+      },
+      item: {
+        padding: 0,
+        borderBottom: '1px solid #e5e7eb',
+        '&focused': {
+          backgroundColor: '#f3f4f6',
+        },
+      },
+    },
+  }
+
+  const mentionStyle = {
+    backgroundColor: 'hsl(142.1 76.2% 36.3% / 0.1)',
+    borderRadius: '4px',
+    border: '1px solid hsl(142.1 76.2% 36.3% / 0.3)',
   }
 
   return (
@@ -279,16 +332,34 @@ export function ChatBox({ conversationId }: ChatBoxProps) {
             className="hidden"
           />
           
-          <textarea
-            ref={textareaRef}
-            value={input}
-            onChange={handleInputChange}
-            onKeyDown={handleKeyDown}
-            placeholder="Type your message here..."
-            className="flex-1 min-h-[40px] max-h-[150px] resize-none rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 overflow-y-auto"
-            rows={1}
-            disabled={sendMessageMutation.isPending}
-          />
+          <div className="flex-1 border border-input rounded-md focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 bg-background">
+            <MentionsInput
+              inputRef={mentionInputRef}
+              value={input}
+              onChange={handleInputChange}
+              onKeyDown={handleKeyDown}
+              placeholder="Type your message... Use @ to mention files"
+              disabled={sendMessageMutation.isPending}
+              className="mentions-input"
+              style={mentionInputStyle}
+              allowSuggestionsAboveCursor={true}
+            >
+              <Mention
+                trigger="@"
+                data={fileMentionData}
+                markup="[@__display__](file:__id__)"
+                displayTransform={(_id, display) => ` @${display} `}
+                style={mentionStyle}
+                appendSpaceOnAdd={true}
+                renderSuggestion={(_suggestion, _search, highlightedDisplay, _index, focused) => (
+                  <div className={`flex items-center gap-2 px-3 py-2 ${focused ? 'bg-emerald-50 dark:bg-emerald-950/30' : ''}`}>
+                    <FileText className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                    <span className="text-sm">{highlightedDisplay}</span>
+                  </div>
+                )}
+              />
+            </MentionsInput>
+          </div>
           
           <Button
             onClick={handleAttachClick}

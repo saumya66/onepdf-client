@@ -17,7 +17,7 @@ export const useLogin = () => {
       toast.success('Login successful!', {
         description: `Welcome back, ${data.name}!`,
       })
-      navigate({ to: '/dashboard' })
+      navigate({ to: '/app' })
     },
     onError: (error: ApiError) => {
       toast.error('Login failed', {
