@@ -35,9 +35,19 @@ export interface SendMessageRequest {
   conversation_id?: string
 }
 
+export interface GeneratedFile {
+  id: string
+  filename: string
+  mime_type: string
+  file_size: number
+  page_count: number | null
+  created_at: string
+}
+
 export interface SendMessageResponse {
   conversation_id: string
   reply_message: Message
+  generated_files?: GeneratedFile[]
 }
 
 export interface CreateConversationRequest {

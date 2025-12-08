@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { FileText, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Image as ImageIcon } from 'lucide-react'
 import { Document, Page, pdfjs } from 'react-pdf'
 import { useConversationFiles, useFileDownload } from '@/hooks/queries/useChatQueries'
@@ -22,6 +22,20 @@ export function PDFViewer() {
   
   // Use cached file download query
   const { data: fileData, isLoading: loadingFile } = useFileDownload(selectedFile?.id || null)
+  
+  // Reset selected file when conversation changes
+  useEffect(() => {
+    setSelectedFile(null)
+    setPageNumber(1)
+    setNumPages(0)
+  }, [activeConversationId])
+  
+  // Auto-select first file when files are loaded
+  useEffect(() => {
+    if (files && files.length > 0 && !selectedFile) {
+      setSelectedFile(files[0])
+    }
+  }, [files, selectedFile])
 
   const isImage = (mimeType: string) => mimeType.startsWith('image/')
   const isPDF = (mimeType: string) => mimeType === 'application/pdf'

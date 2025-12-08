@@ -82,7 +82,6 @@ export function ChatBox({ conversationId }: ChatBoxProps) {
       // Separate files by type
       const pdfs = filesToSend.filter(file => file.type === 'application/pdf')
       const images = filesToSend.filter(file => file.type.startsWith('image/'))
-      const hasFiles = pdfs.length > 0 || images.length > 0
 
       const response = await sendMessageMutation.mutateAsync({
         user_message: userMessageContent,
@@ -94,8 +93,9 @@ export function ChatBox({ conversationId }: ChatBoxProps) {
       // Add assistant's reply to store
       addMessage(conversationId, response.reply_message)
       
-      // Refetch files if any were uploaded
-      if (hasFiles) {
+      // Refetch files if any were uploaded or if generated files were returned
+      const hasGeneratedFiles = response.generated_files && response.generated_files.length > 0
+      if (hasGeneratedFiles) {
         queryClient.invalidateQueries({ queryKey: chatKeys.files(conversationId) })
       }
     } catch (error) {
