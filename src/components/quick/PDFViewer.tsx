@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { FileText, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Image as ImageIcon } from 'lucide-react'
 import { Document, Page, pdfjs } from 'react-pdf'
 import { useConversationFiles, useFileDownload } from '@/hooks/queries/useChatQueries'
@@ -20,6 +20,9 @@ export function PDFViewer() {
   const [pageNumber, setPageNumber] = useState<number>(1)
   const [scale, setScale] = useState<number>(0.75)
   
+  // Track the first file ID to detect when new files are added
+  const prevFirstFileIdRef = useRef<string | null>(null)
+  
   // Use cached file download query
   const { data: fileData, isLoading: loadingFile } = useFileDownload(selectedFile?.id || null)
   
@@ -28,12 +31,23 @@ export function PDFViewer() {
     setSelectedFile(null)
     setPageNumber(1)
     setNumPages(0)
+    prevFirstFileIdRef.current = null
   }, [activeConversationId])
   
-  // Auto-select first file when files are loaded
+  // Auto-select first file when files are loaded or when first file changes
   useEffect(() => {
-    if (files && files.length > 0 && !selectedFile) {
-      setSelectedFile(files[0])
+    if (files && files.length > 0) {
+      const currentFirstFileId = files[0].id
+      
+      // Select first file if:
+      // 1. No file is selected yet, OR
+      // 2. The first file has changed (new file was added at the beginning)
+      if (!selectedFile || prevFirstFileIdRef.current !== currentFirstFileId) {
+        setSelectedFile(files[0])
+        setPageNumber(1)
+      }
+      
+      prevFirstFileIdRef.current = currentFirstFileId
     }
   }, [files, selectedFile])
 
@@ -84,7 +98,7 @@ export function PDFViewer() {
           <div className="flex flex-col items-center justify-center text-gray-400">
             <FileText className="h-24 w-24 mb-4" strokeWidth={1} />
             <p className="text-lg font-medium">File Preview</p>
-            <p className="text-sm">Select a file to preview</p>
+            <p className="text-sm">Upload & Select any file to preview</p>
           </div>
         ) : isImage(selectedFile.mime_type) ? (
           <div className="flex flex-col items-center justify-center w-full h-full">

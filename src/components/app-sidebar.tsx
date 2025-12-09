@@ -38,16 +38,22 @@ const menuItems = [
     title: 'Workflow',
     section: 'workflow' as const,
     icon: Workflow,
+    comingSoon: true,
+    disabled: false,
   },
   {
     title: 'Files',
     section: 'files' as const,
     icon: FolderOpen,
+    comingSoon: true,
+    disabled: true,
   },
   {
     title: 'Dashboard',
     section: 'dashboard' as const,
     icon: LayoutGrid,
+    comingSoon: true,
+    disabled: true,
   },
 ]
 
@@ -120,12 +126,20 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               {menuItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton 
-                    onClick={() => setActiveSection(item.section)}
+                    onClick={() => !item.disabled && setActiveSection(item.section)}
                     isActive={activeSection === item.section} 
-                    tooltip={item.title}
+                    tooltip={item.comingSoon ? `${item.title} (Coming Soon)` : item.title}
+                    className={item.disabled ? 'opacity-50 cursor-not-allowed' : ''}
                   >
-                    <item.icon />
-                    <span>{item.title}</span>
+                    <item.icon className={item.comingSoon ? 'text-muted-foreground' : ''} />
+                    <span className="flex items-center gap-2">
+                      {item.title}
+                      {item.comingSoon && (
+                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400">
+                          Soon
+                        </span>
+                      )}
+                    </span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}

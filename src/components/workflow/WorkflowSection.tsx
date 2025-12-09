@@ -1,5 +1,5 @@
 import { WorkflowCanvas } from './WorkflowCanvas'
-import { ChatSideBar } from '@/components/ChatSideBar/ChatSideBar'
+// import { ChatSideBar } from '@/components/ChatSideBar/ChatSideBar'
 
 export function WorkflowSection() {
   return (
@@ -9,7 +9,7 @@ export function WorkflowSection() {
       </div>
 
       <aside className="w-96 border-l bg-emerald-50/50 dark:bg-emerald-950/20 flex flex-col overflow-hidden">
-        <ChatSideBar />
+        {/* <ChatSideBar /> */}
       </aside>
     </div>
   )

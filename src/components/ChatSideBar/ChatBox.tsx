@@ -138,12 +138,12 @@ export function ChatBox({ conversationId }: ChatBoxProps) {
   const mentionInputStyle = {
     control: {
       fontSize: 13,
-      minHeight: 40,
+      minHeight: 30,
       maxHeight: 150,
     },
     '&multiLine': {
       control: {
-        minHeight: 40,
+        minHeight: 30,
       },
       highlighter: {
         padding: '8px 12px',
@@ -322,7 +322,7 @@ export function ChatBox({ conversationId }: ChatBoxProps) {
         )}
 
         {/* Input Row */}
-        <div className="flex gap-2 items-end">
+        <div className="flex gap-2 items-center justify-center">
           <input
             ref={fileInputRef}
             type="file"
@@ -338,7 +338,7 @@ export function ChatBox({ conversationId }: ChatBoxProps) {
               value={input}
               onChange={handleInputChange}
               onKeyDown={handleKeyDown}
-              placeholder="Type your message... Use @ to mention files"
+              placeholder="Type here... Use @ to mention files"
               disabled={sendMessageMutation.isPending}
               className="mentions-input"
               style={mentionInputStyle}

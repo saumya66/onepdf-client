@@ -1,6 +1,6 @@
-import { useQuery, useMutation } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { chatApi } from '@/api/chat.api'
-import type { SendMessageRequest, CreateConversationRequest } from '@/types/chat.types'
+import type { SendMessageRequest, CreateConversationRequest, UpdateConversationRequest } from '@/types/chat.types'
 
 // Query keys
 export const chatKeys = {
@@ -39,6 +39,20 @@ export const useSendMessage = () => {
 export const useCreateConversation = () => {
   return useMutation({
     mutationFn: (data?: CreateConversationRequest) => chatApi.createConversation(data),
+  })
+}
+
+// Update a conversation
+export const useUpdateConversation = () => {
+  const queryClient = useQueryClient()
+  
+  return useMutation({
+    mutationFn: ({ conversationId, data }: { conversationId: string; data: UpdateConversationRequest }) => 
+      chatApi.updateConversation(conversationId, data),
+    onSuccess: () => {
+      // Invalidate conversations to refetch updated data
+      queryClient.invalidateQueries({ queryKey: chatKeys.conversations() })
+    },
   })
 }
 

@@ -36,7 +36,7 @@ function AppPage() {
   return (
     <SidebarProvider>
       <AppSidebar />
-      <SidebarInset>
+      <SidebarInset> 
         {renderSection()}
       </SidebarInset>
     </SidebarProvider>

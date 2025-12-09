@@ -55,6 +55,11 @@ export interface CreateConversationRequest {
   mode?: string
 }
 
+export interface UpdateConversationRequest {
+  title?: string
+  mode?: string
+}
+
 export interface CreateConversationResponse {
   id: string
   user_id: string
