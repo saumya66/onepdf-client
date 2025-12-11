@@ -41,19 +41,19 @@ const menuItems = [
     comingSoon: true,
     disabled: false,
   },
-  {
-    title: 'Files',
-    section: 'files' as const,
-    icon: FolderOpen,
-    comingSoon: true,
-    disabled: true,
-  },
+  // {
+  //   title: 'Files',
+  //   section: 'files' as const,
+  //   icon: FolderOpen,
+  //   comingSoon: true,
+  //   disabled: true,
+  // },
   {
     title: 'Dashboard',
     section: 'dashboard' as const,
     icon: LayoutGrid,
-    comingSoon: true,
-    disabled: true,
+    comingSoon: false,
+    disabled: false,
   },
 ]
 
@@ -82,7 +82,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <div className="flex items-center justify-between gap-2">
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton size="lg" asChild tooltip="PDF Pro">
+              <SidebarMenuButton size="lg" asChild tooltip="OnePdf">
                 <Link to="/app">
                   <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-emerald-600 text-white">
                     <svg
@@ -100,7 +100,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     </svg>
                   </div>
                   <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-semibold">PDF Pro</span>
+                    <span className="truncate font-semibold">OnePdf</span>
                   </div>
                 </Link>
               </SidebarMenuButton>
@@ -136,7 +136,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                       {item.title}
                       {item.comingSoon && (
                         <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400">
-                          Soon
+                         ✨ Soon 
                         </span>
                       )}
                     </span>

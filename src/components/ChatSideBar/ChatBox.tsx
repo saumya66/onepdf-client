@@ -9,6 +9,7 @@ import type { Message, AssistantMessageContent } from '@/types/chat.types'
 import { AnimateIcon } from '@/components/animate-ui/icons/icon'
 import { Sparkle } from '@/components/animate-ui/icons/sparkle'
 import { useQueryClient } from '@tanstack/react-query'
+import { TypewriterText } from './TypewriterText'
 
 interface ChatBoxProps {
   conversationId: string
@@ -17,6 +18,7 @@ interface ChatBoxProps {
 export function ChatBox({ conversationId }: ChatBoxProps) {
   const [input, setInput] = useState('')
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([])
+  const [animatingMessageId, setAnimatingMessageId] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const mentionInputRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -90,8 +92,9 @@ export function ChatBox({ conversationId }: ChatBoxProps) {
         images: images.length > 0 ? images : undefined,
       })
 
-      // Add assistant's reply to store
+      // Add assistant's reply to store and trigger typewriter effect
       addMessage(conversationId, response.reply_message)
+      setAnimatingMessageId(response.reply_message.id)
       
       // Refetch files if any were uploaded or if generated files were returned
       const hasGeneratedFiles = response.generated_files && response.generated_files.length > 0
@@ -244,7 +247,18 @@ export function ChatBox({ conversationId }: ChatBoxProps) {
                       : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100'
                   }`}
                 >
-                  <p className="text-sm whitespace-pre-wrap">{messageContent}</p>
+                  <p className="text-sm whitespace-pre-wrap">
+                    {!isUser && animatingMessageId === message.id ? (
+                      <TypewriterText 
+                        text={messageContent} 
+                        speed={10}
+                        onComplete={() => setAnimatingMessageId(null)}
+                        onUpdate={() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })}
+                      />
+                    ) : (
+                      messageContent
+                    )}
+                  </p>
                 </div>
                 <span className="text-xs text-gray-500">{timestamp}</span>
               </div>
